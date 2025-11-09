@@ -1,0 +1,171 @@
+# GLADOS Voice Assistant - Git Ignore File
+# Prevents sensitive data from being committed to version control
+
+# ========================================
+# SECURITY - Sensitive Files
+# ========================================
+secrets.py
+config/secrets.py
+*.key
+*.pem
+*.p12
+*.pfx
+*.env
+.env
+.env.*
+credentials.json
+credentials.yaml
+auth_token*
+api_keys*
+
+# API Keys and Tokens
+**/openai_key*
+**/anthropic_key*
+**/*_token*
+**/*_secret*
+
+# WiFi Credentials
+**/wifi_config*
+**/network_config*
+
+# ========================================
+# Python
+# ========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual Environments
+venv/
+env/
+ENV/
+voice_ai_env/
+.venv
+
+# ========================================
+# Raspberry Pi Specific
+# ========================================
+# Audio recordings (temporary files)
+*.wav
+*.mp3
+*.ogg
+*.flac
+recordings/
+temp_audio/
+
+# Model caches
+models/cache/
+.cache/
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================================
+# Development
+# ========================================
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# ========================================
+# Logs and Databases
+# ========================================
+logs/*.log
+*.log
+*.log.*
+*.db
+*.sqlite
+*.sqlite3
+
+# Keep logs directory but ignore contents
+logs/*
+!logs/.gitkeep
+
+# ========================================
+# Large Model Files
+# ========================================
+# Don't commit large model files (download separately)
+models/*.onnx
+models/*.pt
+models/*.pth
+models/*.bin
+models/*.safetensors
+models/piper/*.onnx
+models/piper/*.pt
+!models/README.md
+!models/piper/README.md
+
+# ========================================
+# OS Specific
+# ========================================
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ========================================
+# Temporary Files
+# ========================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo

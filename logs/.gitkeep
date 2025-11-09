@@ -1,0 +1,60 @@
+# Logs Directory
+
+This directory contains application logs for the GLADOS Voice Assistant.
+
+## Log Files
+
+- `voice_ai.log` - Main application log with all events, errors, and performance metrics
+
+## Log Rotation
+
+Logs are automatically rotated when they reach 10MB, keeping 5 backup files.
+
+Configuration in `config/voice_ai_config.yaml`:
+
+```yaml
+logging:
+  file: logs/voice_ai.log
+  level: INFO
+  max_size_mb: 10
+  backup_count: 5
+```
+
+## Viewing Logs
+
+```bash
+# View latest logs
+tail -f logs/voice_ai.log
+
+# Search for errors
+grep ERROR logs/voice_ai.log
+
+# View last 100 lines
+tail -n 100 logs/voice_ai.log
+
+# Watch logs in real-time with colors
+tail -f logs/voice_ai.log | grep --color=always -E "ERROR|WARNING|$"
+```
+
+## Log Levels
+
+- **DEBUG**: Detailed information for debugging
+- **INFO**: General informational messages (default)
+- **WARNING**: Warning messages for potential issues
+- **ERROR**: Error messages for failures
+- **CRITICAL**: Critical errors that prevent operation
+
+## Privacy Note
+
+Logs may contain:
+- ✅ Performance metrics and timing
+- ✅ Error messages and stack traces
+- ✅ System status information
+- ❌ **NO voice transcriptions** (privacy protected)
+- ❌ **NO API keys or credentials**
+
+It's safe to share logs when troubleshooting, but always review first.
+
+## .gitkeep
+
+This `.gitkeep` file ensures the logs directory exists in git while keeping log files excluded (via `.gitignore`).

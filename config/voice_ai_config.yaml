@@ -1,0 +1,86 @@
+audio:
+  channels: 1
+  chunk_size: 1024
+  max_record_duration: 10
+  sample_rate: 22050
+  silence_threshold: 1000
+  vad_enabled: true
+default_model: gemma2:2b-instruct-q4_0
+development:
+  audio_file_debug: false
+  debug_mode: false
+  mock_hardware: false
+  test_mode: false
+hardware:
+  raspberry_pi:
+    cpu_cores: 4
+    memory_limit_mb: 6144
+    model: Pi 5 8GB
+    optimize_for_pi5: true
+  voice_bonnet:
+    audio_device: plughw:0,0
+    button_pin: D17
+llm:
+  context_settings:
+    keep_alive: 1m
+    num_batch: 4
+    num_ctx: 1024
+  default_model: gemma2:2b-instruct-q4_0
+  large_model: gemma3-fixed:latest
+  max_tokens: 500
+  medium_model: gemma3-fixed:latest
+  min_p: 0.0
+  system_prompt: You are a helpful voice assistant. Give very brief answers in 1-2
+    sentences. 
+  temperature: 0.1
+  top_k: 20
+  top_p: 0.95
+logging:
+  backup_count: 5
+  console_output: true
+  file: logs/voice_ai.log
+  level: INFO
+  max_size_mb: 10
+monitoring:
+  log_performance: true
+  max_cpu_temp: 75.0
+  memory_alerts: true
+  stats_interval: 60
+  temperature_alerts: true
+pipeline:
+  cpu_affinity:
+  - 2
+  - 3
+  llm_timeout: 10
+  memory_optimization: true
+  model_swap_phrases:
+  - swap model
+  - switch model
+  - change model
+  silence_duration: 2.0
+  stt_timeout: 10
+  system_commands:
+  - check temperature
+  - check memory
+  - shutdown system
+  total_timeout: 45
+  tts_timeout: 10
+  vad_threshold: 0.3
+service:
+  auto_start: false
+  max_restarts: 5
+  restart_delay: 10
+  restart_on_failure: true
+stt:
+  chunk_length_s: 30
+  device: cpu
+  language: en
+  model_name: nemo-parakeet-tdt-0.6b-v2
+  quantization: int8
+tts:
+  device: cpu
+  pitch: 0.0
+  speed: 1.0
+  voice: glados
+  volume: 0.8
+tts_engine: piper
