@@ -16,7 +16,7 @@ A privacy-first, fully local voice AI assistant powered by Raspberry Pi 5. All p
 
 ### � Multiple Voice Options
 - **Customizable voice personalities** with 161+ unique greeting variations
-- **Multiple TTS voices available**: LibriTTS-R (neutral), Lessac (professional), GLaDOS-style, and more
+- **Multiple TTS voices available**: LibriTTS-R (neutral), Lessac (professional), robot-style, and more
 - **Time-aware greetings** that adapt to the time of day
 - **Configurable response styles** to match your preferences
 
@@ -64,8 +64,8 @@ A privacy-first, fully local voice AI assistant powered by Raspberry Pi 5. All p
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/glados-voice-assistant.git
-cd glados-voice-assistant
+git clone https://github.com/eric-rolph/pi5-local-voice-assistant.git
+cd pi5-local-voice-assistant
 
 # Run the automated installer
 chmod +x install.sh
@@ -75,7 +75,7 @@ chmod +x install.sh
 # 1. Create a virtual environment
 # 2. Install all Python dependencies
 # 3. Set up Ollama and download LLM models
-# 4. Configure Piper TTS with GLaDOS voice
+# 4. Configure Piper TTS with voice model
 # 5. Set up system services (optional)
 ```
 
@@ -137,7 +137,7 @@ wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_
 # wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx
 # wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
 
-# Option 3: GLaDOS-style voice (Portal character)
+# Option 3: robot-style voice (Portal character)
 # wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/glados/medium/glados.onnx
 # wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/glados/medium/glados.onnx.json
 
@@ -199,21 +199,21 @@ The assistant will:
 
 ```bash
 # Create service file
-sudo nano /etc/systemd/system/glados-assistant.service
+sudo nano /etc/systemd/system/voice-assistant.service
 ```
 
 Add the following content:
 
 ```ini
 [Unit]
-Description=GLADOS Voice Assistant
+Description=Local Voice Assistant
 After=network.target
 
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/glados-voice-assistant
-ExecStart=/home/pi/glados-voice-assistant/voice_ai_env/bin/python /home/pi/glados-voice-assistant/src/voice_ai_assistant.py
+WorkingDirectory=/home/pi/pi5-local-voice-assistant
+ExecStart=/home/pi/pi5-local-voice-assistant/voice_ai_env/bin/python /home/pi/pi5-local-voice-assistant/src/voice_ai_assistant.py
 Restart=on-failure
 RestartSec=10
 
@@ -290,18 +290,18 @@ Typical response times on Raspberry Pi 5 (8GB):
 |-------|------|-------|
 | STT (Speech Recognition) | 0.3-0.8s | INT8 Parakeet-TDT |
 | LLM (Response Generation) | 2-5s | Gemma 2 2B Q4_0 |
-| TTS (Speech Synthesis) | 1-2s | Piper with GLaDOS |
+| TTS (Speech Synthesis) | 1-2s | Piper TTS |
 | **Total** | **3.5-7.5s** | End-to-end response |
 
 ## 🎓 Project Structure
 
 ```
-glados-voice-assistant/
+pi5-local-voice-assistant/
 ├── src/
 │   ├── voice_ai_assistant.py      # Main application
 │   ├── tts_manager.py              # Text-to-speech management
 │   ├── led_manager_enhanced.py     # LED control system
-│   └── greeting_phrases.py         # 161+ GLaDOS greetings
+│   └── greeting_phrases.py         # 161+ greeting variations
 ├── config/
 │   ├── voice_ai_config.yaml        # Main configuration
 │   ├── secrets.py.example          # Credentials template
@@ -382,8 +382,8 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ```bash
 # Clone and create dev branch
-git clone https://github.com/YOUR_USERNAME/glados-voice-assistant.git
-cd glados-voice-assistant
+git clone https://github.com/eric-rolph/pi5-local-voice-assistant.git
+cd pi5-local-voice-assistant
 git checkout -b feature/your-feature
 
 # Install dev dependencies
@@ -419,8 +419,8 @@ See [SECURITY.md](SECURITY.md) for our security policy and how to report vulnera
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/YOUR_USERNAME/glados-voice-assistant/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/YOUR_USERNAME/glados-voice-assistant/discussions)
+- **Issues**: [GitHub Issues](https://github.com/eric-rolph/pi5-local-voice-assistant/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/eric-rolph/pi5-local-voice-assistant/discussions)
 - **Documentation**: [docs/](docs/)
 
 ## 🗺️ Roadmap
