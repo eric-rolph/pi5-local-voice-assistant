@@ -14,7 +14,7 @@ A privacy-first, fully local voice AI assistant powered by Raspberry Pi 5. All p
 
 ## ✨ Features
 
-### � Multiple Voice Options
+### 🎤 Multiple Voice Options
 - **Customizable voice personalities** with 161+ unique greeting variations
 - **Multiple TTS voices available**: LibriTTS-R (neutral), Lessac (professional), robot-style, and more
 - **Time-aware greetings** that adapt to the time of day
