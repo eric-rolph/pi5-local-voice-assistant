@@ -107,13 +107,8 @@ class VoiceAIAssistant:
         }
 
     async def initialize(self):
-        """Initialize all components with LED startup feedback"""
-        # Show startup sequence
+        """Initialize all AI components with LED startup feedback"""
         await self.led_manager.show_startup()
-        """Initialize all components with LED startup feedback"""
-        # Show startup sequence
-        await self.led_manager.show_startup()
-        """Initialize all AI components"""
         self.logger.info("🚀 Initializing Voice AI Assistant...")
         
         initialization_tasks = [
@@ -126,6 +121,10 @@ class VoiceAIAssistant:
         try:
             await asyncio.gather(*initialization_tasks)
             self.logger.info("✅ All components initialized successfully!")
+            # Play startup greeting only AFTER TTS engine is initialized
+            greeting = self._get_startup_greeting()
+            self.logger.info(f"🎤 Startup greeting: {greeting}")
+            asyncio.create_task(self.speak_greeting(greeting))
             return True
         except Exception as e:
             self.logger.error(f"❌ Initialization failed: {e}")
@@ -209,20 +208,26 @@ class VoiceAIAssistant:
         except Exception as e:
             self.logger.warning(f"⚠️ Could not set CPU affinity: {e}")
 
+    def set_greeting_mode(self, mode: str = "mixed"):
+        """Set the greeting mode for startup ('mixed', 'time_aware', 'glados', 'random')."""
+        self.greeting_mode = mode
+        self.logger.info(f"🎤 Greeting mode set to: {mode}")
 
-        # Play startup greeting
-        greeting = get_mixed_greeting()
-        self.logger.info(f"🎤 Startup greeting: {greeting}")
-        asyncio.create_task(self.speak_greeting(greeting))
+    def _get_startup_greeting(self) -> str:
+        mode = getattr(self, "greeting_mode", "mixed")
+        if mode == "time_aware":
+            return get_time_aware_greeting()
+        if mode == "glados":
+            return get_glados_greeting()
+        if mode == "random":
+            return get_random_greeting()
+        return get_mixed_greeting()
 
     async def run(self):
         """Main event loop - wait for button presses and handle voice interactions"""
         await self.led_manager.show_success(1.0)  # Startup complete
-        await self.led_manager.show_success(1.0)  # Startup complete
         self.logger.info("🎮 Voice AI Assistant ready! Press the button to speak...")
         await self.led_manager.show_idle()  # Ready for interaction
-        await self.led_manager.show_idle()  # Ready for interaction
-        await self.led_manager.show_idle()
         
         try:
             while True:
@@ -267,79 +272,74 @@ class VoiceAIAssistant:
             if await self._handle_voice_commands(transcript.text):
                 return
             
-            # Generate LLM response
-            llm_response = await self._process_llm(transcript.text)
-            
-            # Synthesize and play response
-            await self._synthesize_and_play_with_waveform(llm_response)
+            # Stream LLM response sentence-by-sentence directly into TTS for low time-to-first-audio
+            await self._stream_llm_and_speak(transcript.text)
             
             # Update stats
             total_time = time.time() - start_time
             self.stats['successful_queries'] += 1
             self.logger.info(f"✅ Voice interaction completed in {total_time:.2f}s")
-            await self.led_manager.show_idle()
             
         except Exception as e:
             self.stats['failed_queries'] += 1
             self.logger.error(f"❌ Voice interaction failed: {e}")
         finally:
             self.is_processing = False
+            await self.led_manager.show_idle()
 
-    async def _record_audio(self) -> str:
-        """Record audio from Voice Bonnet microphone"""
+    def _record_audio_sync(self) -> str:
+        """Blocking audio capture run on a worker thread so the asyncio event loop stays responsive."""
+        sample_rate = self.config['audio']['sample_rate']
+        channels = self.config['audio']['channels']
+        chunk_size = self.config['audio']['chunk_size']
+        max_duration = self.config['audio']['max_record_duration']
+
+        stream = self.audio.open(
+            format=pyaudio.paInt16,
+            channels=channels,
+            rate=sample_rate,
+            input=True,
+            frames_per_buffer=chunk_size
+        )
+
+        frames = []
+        silence_count = 0
+        start_time = time.time()
         try:
-            # Audio recording parameters optimized for Pi 5
-            sample_rate = self.config['audio']['sample_rate']
-            channels = self.config['audio']['channels']
-            chunk_size = self.config['audio']['chunk_size']
-            max_duration = self.config['audio']['max_record_duration']
-            
-            # Open audio stream
-            stream = self.audio.open(
-                format=pyaudio.paInt16,
-                channels=channels,
-                rate=sample_rate,
-                input=True,
-                frames_per_buffer=chunk_size
-            )
-            
-            frames = []
-            start_time = time.time()
-            
             self.logger.info("🔴 Recording... (speak now)")
-            
-            # Record for max duration or until button released
             while time.time() - start_time < max_duration:
                 self.button.update()
                 if self.button.rose:  # Button released
                     break
-                    
+
                 data = stream.read(chunk_size, exception_on_overflow=False)
                 frames.append(data)
-                
-                # Simple volume detection to auto-stop on silence
+
+                # Reset per-recording silence counter to avoid premature cutoffs
                 volume = np.frombuffer(data, dtype=np.int16).astype(np.float32)
-                if len(frames) > 10 and np.max(np.abs(volume)) < 1000:  # Very quiet
-                    silence_count = getattr(self, '_silence_count', 0) + 1
-                    if silence_count > 20:  # 2 seconds of silence
+                if len(frames) > 10 and np.max(np.abs(volume)) < 1000:
+                    silence_count += 1
+                    if silence_count > 20:  # ~2 seconds of silence
                         break
-                    self._silence_count = silence_count
                 else:
-                    self._silence_count = 0
-            
+                    silence_count = 0
+        finally:
             stream.stop_stream()
             stream.close()
-            
-            # Save audio to temporary file
-            audio_data = np.frombuffer(b''.join(frames), dtype=np.int16)
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
-            sf.write(temp_file.name, audio_data, sample_rate)
-            
-            duration = len(audio_data) / sample_rate
-            self.logger.info(f"⏹️ Recording stopped ({duration:.1f}s)")
-            
-            return temp_file.name
-            
+
+        audio_data = np.frombuffer(b''.join(frames), dtype=np.int16)
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
+            temp_path = temp_file.name
+        sf.write(temp_path, audio_data, sample_rate)
+
+        duration = len(audio_data) / sample_rate
+        self.logger.info(f"⏹️ Recording stopped ({duration:.1f}s)")
+        return temp_path
+
+    async def _record_audio(self) -> str:
+        """Record audio from Voice Bonnet microphone without blocking the asyncio loop."""
+        try:
+            return await asyncio.to_thread(self._record_audio_sync)
         except Exception as e:
             self.logger.error(f"❌ Audio recording failed: {e}")
             raise
@@ -517,6 +517,96 @@ class VoiceAIAssistant:
             self.logger.error(f"❌ LLM processing failed: {e}")
             return "I'm sorry, I couldn't process that request."
 
+    def _build_llm_options(self) -> tuple[str, Dict[str, Any]]:
+        llm_config = self.config.get('llm', {})
+        system_prompt = llm_config.get('system_prompt', 'You are a helpful voice assistant.')
+        options: Dict[str, Any] = {
+            'num_predict': llm_config.get('max_tokens', 500),
+            'temperature': llm_config.get('temperature', 0.7),
+            'top_p': llm_config.get('top_p', 0.9),
+            'repeat_penalty': 1.1,
+            'top_k': llm_config.get('top_k', 20),
+        }
+        if 'min_p' in llm_config:
+            options['min_p'] = llm_config['min_p']
+        context_settings = llm_config.get('context_settings', {})
+        if 'num_ctx' in context_settings:
+            options['num_ctx'] = context_settings['num_ctx']
+        if 'num_batch' in context_settings:
+            options['num_batch'] = context_settings['num_batch']
+        return system_prompt, options
+
+    async def _stream_llm_and_speak(self, text: str) -> str:
+        """Stream Ollama tokens sentence-by-sentence into TTS to cut time-to-first-audio."""
+        import re
+
+        start_time = time.time()
+        await self.led_manager.show_thinking()
+        system_prompt, options = self._build_llm_options()
+        prompt = (
+            f"<bos><start_of_turn>system\n{system_prompt}<end_of_turn>\n"
+            f"<start_of_turn>user\n{text}<end_of_turn>\n<start_of_turn>model\n"
+        )
+        loop = asyncio.get_running_loop()
+        sentence_queue: asyncio.Queue[Optional[str]] = asyncio.Queue()
+        collected: list[str] = []
+        boundary_re = re.compile(r'(?<=[.!?])\s+|\n+')
+
+        def producer() -> None:
+            buf = ""
+            try:
+                stream = self.ollama_client.generate(
+                    model=self.current_llm_model,
+                    prompt=prompt,
+                    options=options,
+                    stream=True,
+                )
+                for chunk in stream:
+                    token = chunk.get('response', '') if isinstance(chunk, dict) else getattr(chunk, 'response', '')
+                    if not token:
+                        continue
+                    buf += token
+                    if "\nQ:" in buf:
+                        buf = buf.split("\nQ:", 1)[0]
+                        break
+                    parts = boundary_re.split(buf)
+                    if len(parts) > 1:
+                        for seg in parts[:-1]:
+                            cleaned = self._clean_llm_response(seg)
+                            if cleaned:
+                                collected.append(cleaned)
+                                loop.call_soon_threadsafe(sentence_queue.put_nowait, cleaned)
+                        buf = parts[-1]
+                tail = self._clean_llm_response(buf)
+                if tail:
+                    collected.append(tail)
+                    loop.call_soon_threadsafe(sentence_queue.put_nowait, tail)
+            except Exception as exc:
+                self.logger.error(f"❌ Streaming LLM failed: {exc}")
+                if not collected:
+                    loop.call_soon_threadsafe(
+                        sentence_queue.put_nowait, "I'm sorry, I couldn't process that request."
+                    )
+            finally:
+                loop.call_soon_threadsafe(sentence_queue.put_nowait, None)
+
+        prod_task = asyncio.create_task(asyncio.to_thread(producer))
+        try:
+            while True:
+                sentence = await sentence_queue.get()
+                if sentence is None:
+                    break
+                await self._synthesize_and_play_with_waveform(sentence)
+        finally:
+            await prod_task
+
+        processing_time = time.time() - start_time
+        self.stats['avg_llm_time'] = (
+            (self.stats['avg_llm_time'] * self.stats['successful_queries'] + processing_time)
+            / (self.stats['successful_queries'] + 1)
+        )
+        return " ".join(collected)
+
     async def _synthesize_and_play(self, text: str):
         """Generate speech and play through Voice Bonnet using TTS Manager"""
         start_time = time.time()
@@ -562,8 +652,6 @@ class VoiceAIAssistant:
             
         except Exception as e:
             self.logger.error(f"❌ TTS/Audio playback failed: {e}")
-        except Exception as e:
-            self.logger.error(f"❌ TTS/Audio playback failed: {e}")
 
     def _get_cpu_temperature(self) -> float:
         """Get Raspberry Pi CPU temperature"""
@@ -571,7 +659,7 @@ class VoiceAIAssistant:
             with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
                 temp = float(f.read()) / 1000.0
             return temp
-        except:
+        except Exception:
             return 0.0
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
@@ -582,10 +670,10 @@ class VoiceAIAssistant:
             return config
         except Exception as e:
             print(f"Error loading config: {e}")
-            # Return minimal default config
+            # Return minimal default config matching expected schema
             return {
                 'audio': {'sample_rate': 16000, 'channels': 1, 'chunk_size': 1024, 'max_record_duration': 10},
-                'hardware': {'button_pin': 'GPIO17'},
+                'hardware': {'voice_bonnet': {'button_pin': 'D17'}},
                 'llm': {'default_model': 'gemma2:2b-instruct-q4_K_M'},
                 'tts': {'device': 'cpu', 'voice': 'default'},
                 'logging': {'level': 'INFO'}
@@ -593,12 +681,14 @@ class VoiceAIAssistant:
 
     def _setup_logging(self) -> logging.Logger:
         """Setup logging configuration"""
+        log_dir = PROJECT_ROOT / 'logs'
+        log_dir.mkdir(parents=True, exist_ok=True)
         logging.basicConfig(
             level=getattr(logging, self.config.get('logging', {}).get('level', 'INFO')),
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             handlers=[
                 logging.StreamHandler(sys.stdout),
-                logging.FileHandler(PROJECT_ROOT / 'logs' / 'voice_ai.log')
+                logging.FileHandler(log_dir / 'voice_ai.log')
             ]
         )
         return logging.getLogger(__name__)
@@ -703,12 +793,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-    def set_greeting_mode(self, mode="mixed"):
-        """
-        Set the greeting mode for startup
-        Modes: 'mixed', 'time_aware', 'glados', 'random'
-        """
-        self.greeting_mode = mode
-        self.logger.info(f"🎤 Greeting mode set to: {mode}")
