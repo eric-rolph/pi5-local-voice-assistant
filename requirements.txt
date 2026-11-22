@@ -133,7 +133,7 @@ sysv_ipc==1.1.0
 thinc==8.3.6
 threadpoolctl==3.6.0
 toml==0.10.2
-torch==2.8.0
+torch==2.13.0
 torchaudio==2.8.0
 tqdm==4.67.1
 typer==0.16.1
